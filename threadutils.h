@@ -40,36 +40,73 @@ Call function in the argument that is passed in
 */
 #define ThreadCreate(function,thread_id,init,maxiter)  \
 {                                                      \
-                                                       \
+    if (setjmp(MAIN) == 0){  \
+        function(thread_id, init, maxiter); \
+    } \
 }
 
 
 /*
 Build up TCB_NODE for each function, insert it into circular linked-list
 */
-#define ThreadInit(thread_id,init,maxiter)             \
-{                                                      \
-                                                       \
+#define ThreadInit(thread_id,init,maxiter)           \
+{                                                    \
+    Work = (TCB_ptr)malloc(sizeof(struct TCB_NODE)); \
+    if (thread_id == 1){ \
+        Head = Work; \
+        Current = Work; \
+    } \
+    else if (thread_id == 2){ \
+        Work->Prev = Head; \
+        Head->Next = Work; \
+    } \
+    else{ \
+        Work->Prev = Head->Next; \
+        Head->Next->Next = Work; \
+        Work->Next = Head; \
+        Head->Prev = Work; \
+    } \
+    Work->Thread_id = thread_id; \
+    Work->i = 0; \
+    Work->N = maxiter; \
+    Work->x = init; \
+    if (thread_id == 1){ \
+        Work->y = 0; \
+        Work->z = 100; \
+    } \
+    else if (thread_id == 3){ \
+        Work->y = 0; \
+        Work->z = 1; \
+    } \
 }
 /*
 Call this while a thread is terminated
 */
 #define ThreadExit()                                   \
 {                                                      \
-                                                       \
+    longjmp(SCHEDULER, 2); \
 }
 /*
 Decided whether to "context switch" based on the switchmode argument passed in main.c
 */
 #define ThreadYield()                                 \
 {                                                     \
-                                                      \
+    if (switchmode == 0){ \
+        if (setjmp(Current->Environment) == 0){ \
+            longjmp(SCHEDULER, 1); \
+        } \
+    } \
+    else{ \
+        if (setjmp(Current->Environment) == 0){ \
+            sigpending(&waiting_mask); \
+            if (sigismember(&waiting_mask, SIGTSTP)){ \
+                sigsuspend(&alrm_mask); \
+                longjmp(SCHEDULER, 1); \
+            } \
+            else if (sigismember(&waiting_mask, SIGALRM)){ \
+                sigsuspend(&tstp_mask); \
+                longjmp(SCHEDULER, 1); \
+            } \
+        } \
+    } \
 }
-
-
-
-
-
-
-
-

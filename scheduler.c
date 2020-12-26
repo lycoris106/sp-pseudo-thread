@@ -9,7 +9,14 @@
 */
 void sighandler(int signo)
 {
-       
+    if (signo == SIGTSTP){
+        printf("TSTP signal!\n");
+    }
+    else{
+        printf("ALRM signal!\n");
+        alarm(timeslice);
+    }
+    longjmp(SCHEDULER, 1);
 }
 
 /*
@@ -20,5 +27,21 @@ void sighandler(int signo)
 */
 void scheduler()
 {
-
+    int n;
+    n = setjmp(SCHEDULER);
+    //printf("Cur: %d\n", Current->Thread_id);
+    if (n == 1){
+        Current = Current->Next;
+    }
+    else if (n == 2){
+        if (Current->Next == Current){
+            longjmp(MAIN, 1);
+        }
+        else{
+            Current->Prev->Next = Current->Next;
+            Current->Next->Prev = Current->Prev;
+            Current = Current->Next;
+        }
+    }
+    longjmp(Current->Environment, 1);
 }
